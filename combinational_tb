@@ -1,0 +1,19 @@
+`timescale 1ns / 1ps
+module tb_combinational_multiplier;
+    reg [3:0] a, b;
+    wire [7:0] product;
+    integer i, j;
+    combinational_multiplier dut (.a(a), .b(b), .product(product));
+    initial begin
+        for (i = 0; i < 16; i = i + 1) begin
+            for (j = 0; j < 16; j = j + 1) begin
+                a = i; b = j; #10;
+                if (product !== (i*j)) $fatal(1,"FAIL %0d*%0d=%0d",i,j,product);
+            end
+        end
+        $display("PASS: All 256 combinational cases");
+        $finish;
+    end
+endmodule
+
+
