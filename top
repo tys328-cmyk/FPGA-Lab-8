@@ -1,0 +1,69 @@
+`timescale 1ns / 1ps
+module top (
+    input wire clk,
+    input wire btnC,
+    input wire btnU,
+    input wire [15:0] sw,
+    output wire [15:0] led,
+    output wire [6:0] seg,
+    output wire [3:0] an,
+    output wire dp
+);
+    wire [7:0] comb_result;
+    wire [7:0] seq_result;
+    wire seq_busy, seq_done;
+    reg btnC_d;
+
+    // The board clock samples the rising edge of BTN C.
+    // For production use, add a debounce/synchronizer circuit.
+    always @(posedge clk) begin
+        if (btnU) btnC_d <= 1'b0;
+        else btnC_d <= btnC;
+    end
+    wire start_pulse = btnC & ~btnC_d;
+
+    combinational_multiplier comb (
+        .a(sw[3:0]), .b(sw[7:4]), .product(comb_result)
+    );
+    sequential_multiplier seq (
+        .clk(clk), .reset(btnU), .start(start_pulse),
+        .a(sw[3:0]), .b(sw[7:4]),
+        .product(seq_result), .busy(seq_busy), .done(seq_done)
+    );
+
+    // SW15 = 0 selects combinational; SW15 = 1 selects sequential.
+    wire [7:0] selected_result = sw[15] ? seq_result : comb_result;
+    assign led[7:0] = selected_result;
+    assign led[8] = seq_busy;
+    assign led[9] = seq_done;
+    assign led[15:10] = 6'b0;
+
+    // One 7-segment digit shows the low hex nibble of the product.
+    // Full eight-bit product remains visible on LED7..LED0.
+    assign an = 4'b1110;
+    assign dp = 1'b1;
+    reg [6:0] seg_r;
+    assign seg = seg_r;
+    always @(*) begin
+        case (selected_result[3:0])
+            4'h0: seg_r = 7'b1000000;
+            4'h1: seg_r = 7'b1111001;
+            4'h2: seg_r = 7'b0100100;
+            4'h3: seg_r = 7'b0110000;
+            4'h4: seg_r = 7'b0011001;
+            4'h5: seg_r = 7'b0010010;
+            4'h6: seg_r = 7'b0000010;
+            4'h7: seg_r = 7'b1111000;
+            4'h8: seg_r = 7'b0000000;
+            4'h9: seg_r = 7'b0010000;
+            4'hA: seg_r = 7'b0001000;
+            4'hB: seg_r = 7'b0000011;
+            4'hC: seg_r = 7'b1000110;
+            4'hD: seg_r = 7'b0100001;
+            4'hE: seg_r = 7'b0000110;
+            4'hF: seg_r = 7'b0001110;
+        endcase
+    end
+endmodule
+
+
